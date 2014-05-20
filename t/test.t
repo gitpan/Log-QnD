@@ -1,0 +1,383 @@
+#!/usr/bin/perl -w
+use strict;
+use lib '../../';
+# BEGIN {unless($ENV{'clear_done'}){system '/usr/bin/clear'}} # NODIST
+use Log::QnD;
+use Test;
+use FileHandle;
+use Carp 'croak';
+use String::Util ':all';
+
+# debugging
+# use Debug::ShowStuff ':all';
+# use Debug::ShowStuff::ShowVar;
+
+
+# plan tests
+BEGIN { plan tests => 26 };
+
+# path to log file
+my $log_path =  './qnd.log';
+
+
+#------------------------------------------------------------------------------
+## cannot get log object w/o path param
+#
+if (1) { ##i
+	my ($log, $success);
+	
+	# get log object w/o path param
+	eval {
+		$log = Log::QnD::LogFile->new();
+		$success = 1;
+	};
+	
+	## should not have been successful in getting log object
+	ok(! $success);
+	ok(! $log);
+}
+#
+# cannot get log object w/o path param
+#------------------------------------------------------------------------------
+
+
+
+#------------------------------------------------------------------------------
+## log object
+#
+if (1) { ##i
+	my ($log, @vals_org, $raw_log, @vals_logged);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# generate random values
+	foreach (1..3) {
+		$vals_org[@vals_org] = randword(5);
+	}
+	
+	# get log object w/o path param
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	## should have been successful in getting log object
+	ok($log);
+	ok($log->{'path'} eq $log_path);
+	
+	## write to log file
+	foreach my $val (@vals_org) {
+		$log->write_entry($val);
+	}
+	
+	# get contents of log
+	$raw_log = slurp($log_path);
+	
+	# split into entries
+	@vals_logged = split(m|\s+|, $raw_log);
+	
+	## compare values
+	for (my $idx = 0; $idx < @vals_org; $idx++) {
+		ok($vals_logged[$idx] eq $vals_org[$idx]);
+	}
+}
+#
+# log object
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+## log entry must have path
+#
+if (1) { ##i
+	my ($qnd, $success);
+	
+	# get log object w/o path param
+	eval {
+		$qnd = Log::QnD->new();
+		$success = 1;
+	};
+	
+	## should not have been successful in getting log object
+	ok(! $success);
+	ok(! $qnd);
+}
+#
+# log entry must have path
+#------------------------------------------------------------------------------
+
+
+
+#------------------------------------------------------------------------------
+## log entry
+#
+if (1) { ##i
+	my ($qnd, $private);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# get log object
+	$qnd = Log::QnD->new($log_path);
+	ok($qnd);
+	
+	# get private hash
+	$private = $qnd->private;
+	ok($private);
+	
+	# should have path
+	ok($private->{'path'} eq $log_path);
+	
+	# autosave should be true
+	ok($private->{'autosave'});
+}
+#
+# log entry
+#------------------------------------------------------------------------------
+
+
+
+#------------------------------------------------------------------------------
+## $qnd->save
+#
+if (1) { ##i
+	my ($qnd, $private, $log, $from_log);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# get log object
+	$qnd = Log::QnD->new($log_path);
+	
+	# add entry with newline
+	$qnd->{'rand'} = randword(3) . "\n" . randword(3);
+	
+	# save
+	$qnd->save();
+	
+	# get log object
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	# get log entry
+	$from_log = $log->get_entry();
+	ok($from_log);
+	
+	# compare
+	compare_entries($qnd, $from_log);
+}
+#
+# $qnd->save
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+## auto_save
+#
+if (1) { ##i
+	my ($qnd, $org, $private, $log, $from_log);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# get log object
+	$qnd = Log::QnD->new($log_path);
+	$org = {};
+	
+	# add entry with newline
+	$qnd->{'rand'} = randword(3) . "\n" . randword(3);
+	
+	# hold on to values in $qnd
+	foreach my $key (keys %$qnd) {
+		$org->{$key} = $qnd->{$key};
+	}
+	
+	# undef log entry
+	undef($qnd);
+	
+	# get log object
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	# get log entry
+	$from_log = $log->get_entry();
+	ok($from_log);
+	
+	# compare
+	compare_entries($org, $from_log);
+}
+#
+# auto_save
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+## cancel
+#
+if (1) { ##i
+	my ($qnd, $org, $private, $log, $from_log);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# get log object
+	$qnd = Log::QnD->new($log_path);
+	$org = {};
+	
+	# add entry with newline
+	$qnd->{'rand'} = randword(3) . "\n" . randword(3);
+	
+	# hold on to values in $qnd
+	foreach my $key (keys %$qnd) {
+		$org->{$key} = $qnd->{$key};
+	}
+	
+	# cancel save
+	$qnd->cancel();
+	
+	# undef log entry
+	undef($qnd);
+	
+	# get log object
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	# get log entry
+	$from_log = $log->get_entry();
+	
+	# should not get entry
+	ok(! $from_log);
+}
+#
+# cancel
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+## uncancel
+#
+if (1) { ##i
+	my ($qnd, $org, $private, $log, $from_log);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# get log object
+	$qnd = Log::QnD->new($log_path);
+	$org = {};
+	
+	# add entry with newline
+	$qnd->{'rand'} = randword(3) . "\n" . randword(3);
+	
+	# hold on to values in $qnd
+	foreach my $key (keys %$qnd) {
+		$org->{$key} = $qnd->{$key};
+	}
+	
+	# cancel
+	$qnd->cancel();
+	
+	# uncancel
+	$qnd->uncancel();
+	
+	# undef log entry
+	undef($qnd);
+	
+	# get log object
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	# get log entry
+	$from_log = $log->get_entry();
+	ok($from_log);
+	
+	# compare
+	compare_entries($org, $from_log);
+}
+#
+# uncancel
+#------------------------------------------------------------------------------
+
+
+# clean up
+delete_log_file();
+
+
+### utility functions
+
+#------------------------------------------------------------------------------
+# delete_log_file
+#
+sub delete_log_file {
+	if (-e $log_path)
+		{ unlink($log_path) or die $! }
+}
+#
+# delete_log_file
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+# compare_entries
+#
+sub compare_entries {
+	my ($a, $b) = @_;
+	
+	ok($a->{'entry-id'} eq $b->{'entry-id'});
+	ok($a->{'time'} eq $b->{'time'});
+	ok($a->{'rand'} eq $b->{'rand'});
+}
+#
+# compare_entries
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+# slurp
+#
+sub slurp {
+	my ($path, %opts)=@_;
+	my ($chunk, $fh, @rv, $max, $stdout, $stderr, $out, $total);
+	$total = 0;
+	
+	# don't slurp in more than this amount
+	# default is 100K
+	if (defined $opts{'max'})
+		{ $max = $opts{'max'} }
+	else
+		{ $max = 102400 }
+	
+	# attempt to open
+	unless ($fh = FileHandle->new($path)){
+		$opts{'quiet'} and return undef;
+		croak "slurp: could not open file [$path] for reading: $!";
+	}
+	
+	$fh->binmode($fh) if $opts{'bin'};
+	
+	# slurp in everything
+	CHUNKLOOP:
+	while (read $fh, $chunk, 1024) {
+		push @rv, $chunk;
+		$total += length($chunk);
+		
+		# output to stdout and|or stderr
+		if ($stdout)
+			{ print STDOUT $chunk }
+		if ($stderr)
+			{ print STDERR $chunk }
+		
+		if ( $max && ($total > $max) ) {
+			if ($out)
+				{ return 1 }
+			
+			# we're done reading in
+			last CHUNKLOOP;
+		}
+	}
+	
+	# return
+	return join('', @rv);
+}
+#
+# slurp
+#------------------------------------------------------------------------------
+
+
+# done
+# println 'done?'; # NODIST
+
