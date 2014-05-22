@@ -24,7 +24,7 @@ SYNOPSIS
      $log = Log::QnD::LogFile->new($log_path);
     
      # get entry from log
-     $from_log = $log->next_entry();
+     $from_log = $log->get_entry();
 
 DESCRIPTION
 
@@ -210,4 +210,8 @@ VERSIONS
     Version 0.10, May 20, 2014
 
       Initial release.
+
+    Version 0.11, May 22, 2014
+
+      Fixed problem in test script. Fixed incorrect documentation.
 

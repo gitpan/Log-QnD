@@ -9,6 +9,7 @@ $params = {
             'module_name' => 'Log::QnD',
             'requires' => {
                             'String::Util' => 0,
+                            'Test' => 0,
                             'Class::PublicPrivate' => 0,
                             'JSON' => 0,
                             'File::ReadBackwards' => 0

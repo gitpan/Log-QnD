@@ -9,13 +9,10 @@ use JSON qw{to_json -convert_blessed_universally};
 # use Debug::ShowStuff::ShowVar;
 
 # version
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 # extend Class::PublicPrivate
 use base 'Class::PublicPrivate';
-
-# TESTING
-# print "whatever\n"; # NODIST
 
 =head1 NAME
 
@@ -43,7 +40,7 @@ Log::QnD - Quick and dirty logging system
  $log = Log::QnD::LogFile->new($log_path);
 
  # get entry from log
- $from_log = $log->next_entry();
+ $from_log = $log->get_entry();
 
 =head1 DESCRIPTION
 
@@ -211,8 +208,8 @@ sub save {
 	# get json string
 	$json = to_json($qnd, {convert_blessed=>1});
 	
-	# crunch down entry to ensure it's on a single line
-	$json = crunch($json);
+	# change newlines to spaces to ensure the log entry is a single line
+	$json =~ s|[\r\n]| |gs;
 	
 	# write entry to log
 	$log->write_entry($json) or return 0;
@@ -528,6 +525,10 @@ have greater-than symbols in their names like $qnd->cancel()
 =item Version 0.10, May 20, 2014
 
 Initial release.
+
+=item Version 0.11, May 22, 2014
+
+Fixed problem in test script.  Fixed incorrect documentation.
 
 =back
 

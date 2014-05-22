@@ -24,7 +24,7 @@ Log::QnD - Quick and dirty logging system
  $log = Log::QnD::LogFile->new($log_path);
 
  # get entry from log
- $from_log = $log->next_entry();
+ $from_log = $log->get_entry();
 
 =head1 DESCRIPTION
 
@@ -218,6 +218,10 @@ have greater-than symbols in their names like $qnd->cancel()
 =item Version 0.10, May 20, 2014
 
 Initial release.
+
+=item Version 0.11, May 22, 2014
+
+Fixed problem in test script.  Fixed incorrect documentation.
 
 =back
 

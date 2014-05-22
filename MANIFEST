@@ -6,6 +6,5 @@ README
 Build.PL
 LICENSE
 t/test.t
-t/borman.t
 lib/Log/QnD.pm
 lib/Log/QnD.pod
