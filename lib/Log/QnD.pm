@@ -9,7 +9,7 @@ use JSON qw{to_json -convert_blessed_universally};
 # use Debug::ShowStuff::ShowVar;
 
 # version
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 # extend Class::PublicPrivate
 use base 'Class::PublicPrivate';
@@ -34,7 +34,7 @@ Log::QnD - Quick and dirty logging system
  undef $qnd;
 
  # the long entry looks like this:
- # {"stage":1,"tracks":["1","4"],"time":"Tue May 20 17:13:22 2014","coord":{"x":1,"z":42},"entry-id":"7WHHJ"}
+ # {"stage":1,"tracks":["1","4"],"time":"Tue May 20 17:13:22 2014","coord":{"x":1,"z":42},"entry_id":"7WHHJ"}
 
  # get a log file object
  $log = Log::QnD::LogFile->new($log_path);
@@ -49,6 +49,9 @@ All you have to do is create a Log::QnD object with a file path. The returned
 object is a hashref into which you can save any data you want, including data
 nested in arrays and hashrefs. When the object goes out of scope its contents
 are saved to the log as a JSON string.
+
+PLEASE NOTE: Until this module reaches version 1.0, I might make some
+non-backwards-compatible changes.  See Versions notes for such changes.
 
 =head1 INSTALLATION
 
@@ -71,15 +74,15 @@ into the log.  It is not necessary to explicitly save the log entry; it will be
 saved when the Log::QnD object goes out of scope.
 
 By default, each log entry has two properties when it is created: the time the
-object was created ('time') and a (probably) unique ID ('entry-id').  The
+object was created ('time') and a (probably) unique ID ('entry_id').  The
 structure looks like this:
 
  {
     'time' => 'Mon May 19 19:22:22 2014',
-    'entry-id' => 'JNnwk'
+    'entry_id' => 'JNnwk'
  }
 
-The 'time' field is the time the log entry was created. The 'entry-id' field is
+The 'time' field is the time the log entry was created. The 'entry_id' field is
 just a random five-character string. It is not checked for uniqueness, it is
 just probable that there is no other entry in the log with the same ID.
 
@@ -87,9 +90,9 @@ Each log entry is stored as a single line in the log to make it easy to parse.
 Entries are separated by a blank line to make them more human-readable. So the
 entry above and another entry would be stored like this:
 
- {"time":"Mon May 19 19:22:22 2014","entry-id":"JNnwk"}
+ {"time":"Mon May 19 19:22:22 2014","entry_id":"JNnwk"}
 
- {"time":"Mon May 19 19:22:23 2014","entry-id":"kjH0c"}
+ {"time":"Mon May 19 19:22:23 2014","entry_id":"kjH0c"}
 
 You can save other values into the hash, including nested hashes and arrays:
 
@@ -99,7 +102,7 @@ You can save other values into the hash, including nested hashes and arrays:
 
 which results in a JSON string like this:
 
- {"stage":1,"tracks":["1","4"],"time":"Tue May 20 17:13:22 2014","coord":{"x":1,"z":42},"entry-id":"7WHHJ"}
+ {"stage":1,"tracks":["1","4"],"time":"Tue May 20 17:13:22 2014","coord":{"x":1,"z":42},"entry_id":"7WHHJ"}
 
 =head2 Methods
 
@@ -141,7 +144,7 @@ sub new {
 	$qnd->{'time'} = localtime;
 	
 	# set id
-	$qnd->{'entry-id'} = randword(5);
+	$qnd->{'entry_id'} = randword(5);
 	
 	# autosave
 	$private->{'autosave'} = 1;
@@ -232,8 +235,6 @@ Returns a Log::QnD::LogFile object.  The log entry object does not hold on to
 the log file object, nor does the log file object "know" about the entry
 object.
 
-=back
-
 =cut
 
 sub log_file {
@@ -253,6 +254,27 @@ sub log_file {
 
 
 #------------------------------------------------------------------------------
+# private
+# NOTE: There is no subroutine in this section, just POD to document the
+# $qnd->private() method that is inherited from Class::PublicPrivate.
+#
+
+=item $qnd->private()
+
+$qnd->private() is a method inherited from
+L<Class::PublicPrivate|http://search.cpan.org/~miko/Class-PublicPrivate/>. This
+method is used to store private properties such as the location of the log
+file. Unless you want to tinker around with the log entry's internals you can
+ignore this method.
+
+=cut
+
+#
+# private
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
 # DESTROY
 #
 sub DESTROY {
@@ -267,6 +289,18 @@ sub DESTROY {
 # DESTROY
 #------------------------------------------------------------------------------
 
+
+#------------------------------------------------------------------------------
+# close item list
+#
+
+=back
+
+=cut
+
+#
+# close item list
+#------------------------------------------------------------------------------
 
 
 ###############################################################################
@@ -386,7 +420,10 @@ sub write_entry {
 =item $log->get_entry()
 
 C<get_entry()> returns a single entry from the log file. The data is already
-parsed from JSON.
+parsed from JSON. So, for example, the following line returns an entry from the
+log:
+
+ $log->get_entry();
 
 The last entry in the log file is returned first. With each subsequent call the
 next latest entry is returned.  After the earliest entry in the log is returned
@@ -398,15 +435,31 @@ objects cannot write to the file until the read lock is removed.  The read lock
 is removed when the log file object is detroyed, when C<get_entry()> returns
 undef, or when you explicitly call C<$log-E<gt>end_read>.
 
+=over
+
+=item B<option:> entry_id
+
+If you send the 'entry_id' option then the log entry specified by the given id
+will be returned. If no such entry is found then undef is returned. For
+example, the following line returns the log entry for 'fv8sd', or undef if the
+entry is not found:
+
+ $log->get_entry(entry_id=>'fv8sd');
+
+=back
+
 =cut
 
 sub get_entry {
-	my ($log) = @_;
-	my ($read, $line, $lock);
+	my ($log, %opts) = @_;
+	my ($read, $line, $lock, $tgt_id);
 	
 	# special case: log file doesn't actually exist
 	if (! -e $log->{'path'})
 		{ return undef }
+	
+	# get target id
+	$tgt_id = $opts{'entry_id'};
 	
 	# load module for reading file backwards
 	require File::ReadBackwards;
@@ -434,6 +487,19 @@ sub get_entry {
 		
 		# get json object
 		$entry = from_json($line);
+		
+		# if there is a target id, and this isn't it, next entry
+		# KLUDGE: Something about this next block of code feels spaghettish,
+		# though I can't quite specify why.
+		if ($tgt_id) {
+			if ($entry->{'entry_id'} eq $tgt_id) {
+				$log->end_read();
+				return $entry;
+			}
+			else {
+				next LOG_LOOP;
+			}
+		}
 		
 		# return
 		return $entry;
@@ -530,8 +596,14 @@ Initial release.
 
 Fixed problem in test script.  Fixed incorrect documentation.
 
+=item Version 0.12, May 225, 2014
+
+Made non-backwards-compatible change from "entry-id" to "entry_id".
+
+Added 'entry_id' option to $log_file->get_entry().
+
+Added documentation for $qnd->private() method.
+
 =back
 
 =cut
-
-

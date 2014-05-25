@@ -14,7 +14,7 @@ use String::Util ':all';
 
 
 # plan tests
-BEGIN { plan tests => 26 };
+BEGIN { plan tests => 30 };
 
 # path to log file
 my $log_path =  './qnd.log';
@@ -32,7 +32,7 @@ if (1) { ##i
 		$success = 1;
 	};
 	
-	## should not have been successful in getting log object
+	# should not have been successful in getting log object
 	ok(! $success);
 	ok(! $log);
 }
@@ -96,7 +96,7 @@ if (1) { ##i
 		$success = 1;
 	};
 	
-	## should not have been successful in getting log object
+	# should not have been successful in getting log object
 	ok(! $success);
 	ok(! $qnd);
 }
@@ -293,6 +293,41 @@ if (1) { ##i
 #------------------------------------------------------------------------------
 
 
+#------------------------------------------------------------------------------
+## get_entry(entry_id=>$id)
+#
+if (1) { ##i
+	my ($entry_id, $log, $entry);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# create several log entries, holding on to the first id
+	for (1..5) {
+		my $qnd = Log::QnD->new($log_path);
+		
+		if (! $entry_id)
+			{ $entry_id = $qnd->{'entry_id'} }
+	}
+	
+	# get log object
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	# get entry by id
+	$entry = $log->get_entry(entry_id=>$entry_id);
+	ok($entry_id eq $entry->{'entry_id'});
+	ok(! $log->{'read'});
+	
+	# attempt to get non-existent log entry
+	$entry = $log->get_entry(entry_id=>'sdfsadf');
+	ok(! $entry);
+	ok(! $log->{'read'});
+}
+#
+# get_entry(entry_id=>$id)
+#------------------------------------------------------------------------------
+
+
 # clean up
 delete_log_file();
 
@@ -317,7 +352,7 @@ sub delete_log_file {
 sub compare_entries {
 	my ($a, $b) = @_;
 	
-	ok($a->{'entry-id'} eq $b->{'entry-id'});
+	ok($a->{'entry_id'} eq $b->{'entry_id'});
 	ok($a->{'time'} eq $b->{'time'});
 	ok($a->{'rand'} eq $b->{'rand'});
 }
