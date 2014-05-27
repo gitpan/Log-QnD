@@ -9,7 +9,7 @@ use JSON qw{to_json -convert_blessed_universally};
 # use Debug::ShowStuff::ShowVar;
 
 # version
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 # extend Class::PublicPrivate
 use base 'Class::PublicPrivate';
@@ -407,7 +407,7 @@ use constant READ_BACKWARD => 2;
 
 sub read_entry {
 	my ($log, $direction, %opts) = @_;
-	my ($read, $line, $lock, $tgt_id);
+	my ($read, $line, $lock, $tgt_id, $multiple, $get_count, @rv);
 	
 	# special case: log file doesn't actually exist
 	if (! -e $log->{'path'})
@@ -421,6 +421,11 @@ sub read_entry {
 		if ($log->{'read'}->{'direction'} != $direction) {
 			$log->end_read();
 		}
+	}
+	
+	# determine if we're fetching more than one entry
+	if (defined ($get_count = $opts{'count'})) {
+		$multiple = 1;
 	}
 	
 	# get cached read, else create and cache
@@ -471,13 +476,35 @@ sub read_entry {
 			}
 		}
 		
-		# return
-		return $entry;
+		# if geting multiple entries
+		if ($multiple) {
+			push @rv, $entry;
+			
+			if ($get_count && (@rv >= $get_count)) {
+				wantarray() and return @rv;
+				return \@rv;
+			}
+		}
+		
+		# else just return this entry
+		else {
+			return $entry;
+		}
 	}
 	
-	# at beginning of log, so return undef
+	# at ending|beginning of log, so return undef
 	$log->end_read();
-	return undef;
+	
+	# if seeking multiple values
+	if ($multiple) {
+		wantarray() and return @rv;
+		return \@rv;
+	}
+	
+	# else return undef
+	else {
+		return undef;
+	}
 }
 #
 # read_entry
@@ -526,6 +553,19 @@ example, the following line returns the log entry for 'fv8sd', or undef if the
 entry is not found:
 
  $log->read_backward(entry_id=>'fv8sd');
+
+=item B<option:> count
+
+The C<count> option indicates how many log entries to return.  So, for
+example, the following line retrieves up to five entries, fewer if the
+ending|beginning of the file is reached:
+
+ @entries = $log->read_forward(count=>5)
+
+If C<count> is 0 then all remaining entries are returned.  In array context an
+array is returned.  In scalar context an array reference is returned.  Undef is
+never returned.  Each subsequent call using count returns the next batch of
+C<count> entries.
 
 =back
 
@@ -641,6 +681,13 @@ non-backwards-compatible change.
 Added $log_file->read_forward().
 
 Added private method $log_file->read_entry().
+
+=item 0.14, May 27, 2014
+
+Fixed test script that was attempting to clear the screen. That bug was an
+artifact from development.
+
+Added C<count> option to C<read_forward> and C<read_backward>.
 
 =back
 

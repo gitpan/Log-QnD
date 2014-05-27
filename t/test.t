@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 use lib '../../';
-BEGIN {unless($ENV{'clear_done'}){system '/usr/bin/clear'}} # NODIST
+# BEGIN {unless($ENV{'clear_done'}){system '/usr/bin/clear'}} # NODIST
 use Log::QnD;
 use Test;
 use FileHandle;
@@ -13,7 +13,7 @@ use String::Util ':all';
 # use Debug::ShowStuff::ShowVar;
 
 # plan tests
-BEGIN { plan tests => 40 };
+BEGIN { plan tests => 42 };
 
 # path to log file
 my $log_path =  './qnd.log';
@@ -392,6 +392,95 @@ if (1) { ##i
 #------------------------------------------------------------------------------
 
 
+#------------------------------------------------------------------------------
+## read_forward(count=>$c)
+#
+if (1) {
+	my ($log, @ids);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# generate entries
+	foreach (1..30) {
+		my $qnd = Log::QnD->new($log_path);
+		$ids[@ids] = $qnd->{'entry_id'};
+	}
+
+	# get log object w/o path param
+	$log = Log::QnD::LogFile->new($log_path);
+
+	# read in batches of 5
+	LOG_LOOP: {
+		while (my @entries = $log->read_forward(count=>5)) {
+			while (my $entry = shift(@entries)) {
+				my $id = shift(@ids);
+				unless ($id and ($entry->{'entry_id'} eq $id)) {
+					ok(0);
+					last LOG_LOOP;
+				}
+			}
+		}
+		
+		# should be no more @ids
+		if (@ids)
+			{ ok(0) }
+		
+		# else ok
+		else
+			{ ok(1) }
+	}
+}
+#
+# read_forward(count=>$c)
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+## read_backward(count=>$c)
+#
+if (1) {
+	my ($log, @ids);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# generate entries
+	foreach (1..30) {
+		my $qnd = Log::QnD->new($log_path);
+		$ids[@ids] = $qnd->{'entry_id'};
+	}
+	
+	# reverse ids because we're reading the log file backward
+	@ids = reverse(@ids);
+	
+	# get log object w/o path param
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	# read in batches of 5
+	LOG_LOOP: {
+		while (my @entries = $log->read_backward(count=>5)) {
+			while (my $entry = shift(@entries)) {
+				my $id = shift(@ids);
+				unless ($id and ($entry->{'entry_id'} eq $id)) {
+					ok(0);
+					last LOG_LOOP;
+				}
+			}
+		}
+		
+		# should be no more @ids
+		if (@ids)
+			{ ok(0) }
+		
+		# else ok
+		else
+			{ ok(1) }
+	}
+}
+#
+# read_backward(count=>$c)
+#------------------------------------------------------------------------------
 
 
 # clean up

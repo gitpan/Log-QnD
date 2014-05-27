@@ -198,6 +198,19 @@ Log::QnD::LogFile
 
        $log->read_backward(entry_id=>'fv8sd');
 
+    option: count
+
+      The count option indicates how many log entries to return. So, for
+      example, the following line retrieves up to five entries, fewer if
+      the ending|beginning of the file is reached:
+
+       @entries = $log->read_forward(count=>5)
+
+      If count is 0 then all remaining entries are returned. In array
+      context an array is returned. In scalar context an array reference is
+      returned. Undef is never returned. Each subsequent call using count
+      returns the next batch of count entries.
+
  $log->end_read()
 
     end_read() explicitly closes the read handle for the log and releases
@@ -260,4 +273,11 @@ VERSIONS
       Added $log_file->read_forward().
 
       Added private method $log_file->read_entry().
+
+    0.14, May 27, 2014
+
+      Fixed test script that was attempting to clear the screen. That bug
+      was an artifact from development.
+
+      Added count option to read_forward and read_backward.
 
