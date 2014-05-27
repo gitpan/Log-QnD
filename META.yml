@@ -8,7 +8,7 @@ name: Log-QnD
 provides:
     Log::QnD:
         file: lib/Log/QnD.pm
-        version: 0.12
+        version: 0.13
 requires:
     Class::PublicPrivate: 0
     File::ReadBackwards: 0
@@ -16,4 +16,4 @@ requires:
     String::Util: 0
     Test: 0
     perl: 5.003
-version: 0.12
+version: 0.13

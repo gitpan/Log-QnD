@@ -9,7 +9,7 @@ use JSON qw{to_json -convert_blessed_universally};
 # use Debug::ShowStuff::ShowVar;
 
 # version
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 # extend Class::PublicPrivate
 use base 'Class::PublicPrivate';
@@ -39,8 +39,11 @@ Log::QnD - Quick and dirty logging system
  # get a log file object
  $log = Log::QnD::LogFile->new($log_path);
 
- # get entry from log
- $from_log = $log->get_entry();
+ # get first entry from log
+ $from_log = $log->read_forward();
+
+ # get latest entry from log
+ $from_log = $log->read_backward();
 
 =head1 DESCRIPTION
 
@@ -104,10 +107,6 @@ which results in a JSON string like this:
 
  {"stage":1,"tracks":["1","4"],"time":"Tue May 20 17:13:22 2014","coord":{"x":1,"z":42},"entry_id":"7WHHJ"}
 
-=head2 Methods
-
-=over
-
 =cut
 
 
@@ -116,7 +115,7 @@ which results in a JSON string like this:
 # new
 #
 
-=item Log::QnD->new($log_file_path)
+=head2 Log::QnD->new($log_file_path)
 
 Create a new Log::QnD object. The only param for this method is the path to
 the log file.  The log file does not need to actually exist yet; if necessary
@@ -161,13 +160,13 @@ sub new {
 # cancel, uncancel
 #
 
-=item $qnd->cancel()
+=head2 $qnd->cancel()
 
 Cancels the automatic save.  By default the $qnd object saves to the log when
 it goes out of scope, undeffing it won't cancel the save.  $qnd->cancel()
 causes the object to not save when it goes out of scope.
 
-=item $qnd->uncancel()
+=head2 $qnd->uncancel()
 
 Sets the log entry object to automatically save when the object goes out of scope.
 By default the object is set to autosave, so uncancel() is only useful if you
@@ -193,7 +192,7 @@ sub uncancel {
 # save
 #
 
-=item $qnd->save()
+=head2 $qnd->save()
 
 Saves the Log::QnD log entry.  By default, this method is called when the
 object goes out of scope.  If you've used $qnd-E<gt>cancel() to cancel
@@ -229,7 +228,7 @@ sub save {
 # log_file
 #
 
-=item $qnd->log_file()
+=head2 $qnd->log_file()
 
 Returns a Log::QnD::LogFile object.  The log entry object does not hold on to
 the log file object, nor does the log file object "know" about the entry
@@ -259,7 +258,7 @@ sub log_file {
 # $qnd->private() method that is inherited from Class::PublicPrivate.
 #
 
-=item $qnd->private()
+=head2 $qnd->private()
 
 $qnd->private() is a method inherited from
 L<Class::PublicPrivate|http://search.cpan.org/~miko/Class-PublicPrivate/>. This
@@ -290,18 +289,6 @@ sub DESTROY {
 #------------------------------------------------------------------------------
 
 
-#------------------------------------------------------------------------------
-# close item list
-#
-
-=back
-
-=cut
-
-#
-# close item list
-#------------------------------------------------------------------------------
-
 
 ###############################################################################
 # Log::QnD::LogFile
@@ -326,17 +313,13 @@ Log::QnD in its simplest form by just creating Log::QnD objects and allowing
 them to save themselves when they go out of scope then you don't need to
 explicitly use Log::QnD::LogFile.
 
-=head2 Methods
-
-=over
-
 =cut
 
 #------------------------------------------------------------------------------
 # new
 #
 
-=item Log::QnD::LogFile->new($log_file_path)
+=head2 Log::QnD::LogFile->new($log_file_path)
 
 Create a new Log::QnD::LogFile object. The only param for this method is the
 path to the log file.
@@ -367,7 +350,7 @@ sub new {
 # write_entry
 #
 
-=item $log->write_entry($string)
+=head2 $log->write_entry($string)
 
 This method writes the log entry to the log file.  The log file is created if
 it doesn't already exists.
@@ -414,44 +397,16 @@ sub write_entry {
 
 
 #------------------------------------------------------------------------------
-# get_entry
+# read_entry
+# Private method for implementing readforward() and read_backward().
 #
 
-=item $log->get_entry()
+# constants for reading
+use constant READ_FORWARD => 1;
+use constant READ_BACKWARD => 2;
 
-C<get_entry()> returns a single entry from the log file. The data is already
-parsed from JSON. So, for example, the following line returns an entry from the
-log:
-
- $log->get_entry();
-
-The last entry in the log file is returned first. With each subsequent call the
-next latest entry is returned.  After the earliest entry in the log is returned
-then C<get_entry()> returns undef.
-
-It is important to know that after the first call to C<get_entry()> is made
-the log file object puts a read lock on the log file. That means that log entry
-objects cannot write to the file until the read lock is removed.  The read lock
-is removed when the log file object is detroyed, when C<get_entry()> returns
-undef, or when you explicitly call C<$log-E<gt>end_read>.
-
-=over
-
-=item B<option:> entry_id
-
-If you send the 'entry_id' option then the log entry specified by the given id
-will be returned. If no such entry is found then undef is returned. For
-example, the following line returns the log entry for 'fv8sd', or undef if the
-entry is not found:
-
- $log->get_entry(entry_id=>'fv8sd');
-
-=back
-
-=cut
-
-sub get_entry {
-	my ($log, %opts) = @_;
+sub read_entry {
+	my ($log, $direction, %opts) = @_;
 	my ($read, $line, $lock, $tgt_id);
 	
 	# special case: log file doesn't actually exist
@@ -461,25 +416,40 @@ sub get_entry {
 	# get target id
 	$tgt_id = $opts{'entry_id'};
 	
-	# load module for reading file backwards
-	require File::ReadBackwards;
+	# if there is already a read handle, make sure it's the correct direction
+	if ($log->{'read'}) {
+		if ($log->{'read'}->{'direction'} != $direction) {
+			$log->end_read();
+		}
+	}
 	
 	# get cached read, else create and cache
 	unless ($read = $log->{'read'}) {
-		my ($read_lock);
+		$log->{'read'} = $read = {};
+		
+		# set direction
+		$read->{'direction'} = $direction;
 		
 		# get lock
-		$read_lock = FileHandle->new($log->{'path'}) or die "unable to get read handle: $!";
-		flock($read_lock, LOCK_SH) or die "unable to lock file: $!";
-		$log->{'read_lock'} = $read_lock;
+		$read->{'lock'} = FileHandle->new($log->{'path'}) or die "unable to get read handle: $!";
+		flock($read->{'lock'}, LOCK_SH) or die "unable to lock file: $!";
 		
 		# get read handle
-		$read = File::ReadBackwards->new($log->{'path'}) or die $!;
-		$log->{'read'} = $read;
+		if ($direction == READ_FORWARD) {
+			require FileHandle;
+			$read->{'fh'} = FileHandle->new($log->{'path'});
+		}
+		else {
+			require File::ReadBackwards;
+			$read->{'fh'} = File::ReadBackwards->new($log->{'path'});
+		}
+		
+		# die on failure
+		$read->{'fh'} or die $!
 	}
 	
 	LOG_LOOP:
-	while( defined( my $line = $read->readline ) ) {
+	while( defined( my $line = $read->{'fh'}->getline ) ) {
 		my ($entry);
 		
 		# skip empty lines
@@ -510,7 +480,68 @@ sub get_entry {
 	return undef;
 }
 #
-# get_entry
+# read_entry
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+# read_forward, read_backward
+#
+
+=head2 $log->read_forward(), $log->read_backward()
+
+C<read_forward()> and C<read_backward()> each return a single entry from the
+log file. The data is already parsed from JSON. So, for example, the following
+line returns an entry from the log:
+
+ $log->read_forward();
+
+read_forward() starts with the first entry in the log.  Each subsequent call to
+read_forward() returns the next log entry.
+
+read_backward() starts with the last log entry.  Each subsequent call to
+read_backward() returns the next entry back.
+
+After the latest/earliest entry in the log is returned then these methods
+return undef.
+
+It is important to know that after the first call to C<read_forward()> or
+C<read_backward()> is made the log file object puts a read lock on the log
+file. That means that log entry objects cannot write to the file until the
+read lock is removed.  The read lock is removed when the log file object is
+detroyed, when C<read_backward()> returns undef, or when you explicitly call
+C<$log-E<gt>end_read>.
+
+If you call one of these methods while the log object is reading through using
+the other method, then the read will reset and the end/beginning of the log
+file.
+
+=over
+
+=item B<option:> entry_id
+
+If you send the 'entry_id' option then the log entry specified by the given id
+will be returned. If no such entry is found then undef is returned. For
+example, the following line returns the log entry for 'fv8sd', or undef if the
+entry is not found:
+
+ $log->read_backward(entry_id=>'fv8sd');
+
+=back
+
+=cut
+
+sub read_forward {
+	my $log = shift(@_);
+	return $log->read_entry(READ_FORWARD, @_);
+}
+
+sub read_backward {
+	my $log = shift(@_);
+	return $log->read_entry(READ_BACKWARD, @_);
+}
+#
+# read_forward, read_backward
 #------------------------------------------------------------------------------
 
 
@@ -518,17 +549,17 @@ sub get_entry {
 # end_read
 #
 
-=item $log->end_read()
+=head2 $log->end_read()
 
-C<get_entry()> explicitly closes the read handle for the log and releases the
-read lock.
+C<end_read()> explicitly closes the read handle for the log and releases the
+read lock. C<end_read()> always returns undef.
 
 =cut
 
 sub end_read {
 	my ($log) = @_;
 	delete $log->{'read'};
-	delete $log->{'read_lock'};
+	return undef;
 }
 #
 # end_read
@@ -544,8 +575,6 @@ sub end_read {
 1;
 
 __END__
-
-=back
 
 =head1 SEE ALSO
 
@@ -603,6 +632,15 @@ Made non-backwards-compatible change from "entry-id" to "entry_id".
 Added 'entry_id' option to $log_file->get_entry().
 
 Added documentation for $qnd->private() method.
+
+=item 0.13, May 26, 2014
+
+Changed $log_file->get_entry() to $log_file->read_backward(). This is a
+non-backwards-compatible change.
+
+Added $log_file->read_forward().
+
+Added private method $log_file->read_entry().
 
 =back
 

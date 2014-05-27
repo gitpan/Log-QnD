@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 use lib '../../';
-# BEGIN {unless($ENV{'clear_done'}){system '/usr/bin/clear'}} # NODIST
+BEGIN {unless($ENV{'clear_done'}){system '/usr/bin/clear'}} # NODIST
 use Log::QnD;
 use Test;
 use FileHandle;
@@ -12,9 +12,8 @@ use String::Util ':all';
 # use Debug::ShowStuff ':all';
 # use Debug::ShowStuff::ShowVar;
 
-
 # plan tests
-BEGIN { plan tests => 30 };
+BEGIN { plan tests => 40 };
 
 # path to log file
 my $log_path =  './qnd.log';
@@ -157,7 +156,7 @@ if (1) { ##i
 	$log = Log::QnD::LogFile->new($log_path);
 	
 	# get log entry
-	$from_log = $log->get_entry();
+	$from_log = $log->read_backward();
 	ok($from_log);
 	
 	# compare
@@ -196,7 +195,7 @@ if (1) { ##i
 	$log = Log::QnD::LogFile->new($log_path);
 	
 	# get log entry
-	$from_log = $log->get_entry();
+	$from_log = $log->read_backward();
 	ok($from_log);
 	
 	# compare
@@ -238,7 +237,7 @@ if (1) { ##i
 	$log = Log::QnD::LogFile->new($log_path);
 	
 	# get log entry
-	$from_log = $log->get_entry();
+	$from_log = $log->read_backward();
 	
 	# should not get entry
 	ok(! $from_log);
@@ -282,7 +281,7 @@ if (1) { ##i
 	$log = Log::QnD::LogFile->new($log_path);
 	
 	# get log entry
-	$from_log = $log->get_entry();
+	$from_log = $log->read_backward();
 	ok($from_log);
 	
 	# compare
@@ -294,7 +293,41 @@ if (1) { ##i
 
 
 #------------------------------------------------------------------------------
-## get_entry(entry_id=>$id)
+## read_backward()
+#
+if (1) { ##i
+	my ($log, @ids);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# create several log entries, holding on to the first id
+	for (1..5) {
+		my $qnd = Log::QnD->new($log_path);
+		push @ids, $qnd->{'entry_id'};
+	}
+	
+	# reverse entries so latest is first
+	@ids = reverse(@ids);
+	
+	# get log object
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	# read backward
+	do {
+		foreach my $id (@ids) {
+			my $entry = $log->read_backward();
+			ok($entry->{'entry_id'} eq $id);
+		}
+	};
+}
+#
+# read_backward()
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+## read_backward(entry_id=>$id)
 #
 if (1) { ##i
 	my ($entry_id, $log, $entry);
@@ -314,18 +347,51 @@ if (1) { ##i
 	$log = Log::QnD::LogFile->new($log_path);
 	
 	# get entry by id
-	$entry = $log->get_entry(entry_id=>$entry_id);
+	$entry = $log->read_backward(entry_id=>$entry_id);
 	ok($entry_id eq $entry->{'entry_id'});
 	ok(! $log->{'read'});
 	
 	# attempt to get non-existent log entry
-	$entry = $log->get_entry(entry_id=>'sdfsadf');
+	$entry = $log->read_backward(entry_id=>'sdfsadf');
 	ok(! $entry);
 	ok(! $log->{'read'});
 }
 #
-# get_entry(entry_id=>$id)
+# read_backward(entry_id=>$id)
 #------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+## read_forward()
+#
+if (1) { ##i
+	my ($log, @ids);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# create several log entries, holding on to the first id
+	for (1..5) {
+		my $qnd = Log::QnD->new($log_path);
+		push @ids, $qnd->{'entry_id'};
+	}
+	
+	# get log object
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	# read backward
+	do {
+		foreach my $id (@ids) {
+			my $entry = $log->read_forward();
+			ok($entry->{'entry_id'} eq $id);
+		}
+	};
+}
+#
+# read_forward()
+#------------------------------------------------------------------------------
+
+
 
 
 # clean up
