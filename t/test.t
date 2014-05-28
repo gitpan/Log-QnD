@@ -13,7 +13,7 @@ use String::Util ':all';
 # use Debug::ShowStuff::ShowVar;
 
 # plan tests
-BEGIN { plan tests => 42 };
+BEGIN { plan tests => 44 };
 
 # path to log file
 my $log_path =  './qnd.log';
@@ -396,20 +396,27 @@ if (1) { ##i
 ## read_forward(count=>$c)
 #
 if (1) {
-	my ($log, @ids);
+	my ($counts, $log, @ids);
+	
+	# configure
+	$counts = {};
+	$counts->{'should'} = 100;
 	
 	# delete log file if it exists
 	delete_log_file();
 	
 	# generate entries
-	foreach (1..30) {
+	foreach (1..$counts->{'should'}) {
 		my $qnd = Log::QnD->new($log_path);
 		$ids[@ids] = $qnd->{'entry_id'};
 	}
-
+	
 	# get log object w/o path param
 	$log = Log::QnD::LogFile->new($log_path);
-
+	
+	# get count of log entries
+	$counts->{'is'} = $log->entry_count();
+	
 	# read in batches of 5
 	LOG_LOOP: {
 		while (my @entries = $log->read_forward(count=>5)) {
@@ -480,6 +487,58 @@ if (1) {
 }
 #
 # read_backward(count=>$c)
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+## entry_count returns undef for non-existent log file
+#
+if (1) {
+	my ($log);
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# get log object w/o path param
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	# compare counts
+	ok(! defined $log->entry_count());
+}
+#
+# entry_count returns undef for non-existent log file
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+## entry_count
+#
+if (1) {
+	my ($counts, $log);
+	
+	# configure
+	$counts = {};
+	$counts->{'should'} = 100;
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# generate entries
+	foreach (1..$counts->{'should'}) {
+		my $qnd = Log::QnD->new($log_path);
+	}
+	
+	# get log object w/o path param
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	# get count of log entries
+	$counts->{'is'} = $log->entry_count();
+	
+	# compare counts
+	ok($counts->{'is'} == $counts->{'should'});
+}
+#
+# entry_count
 #------------------------------------------------------------------------------
 
 

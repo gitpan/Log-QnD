@@ -161,6 +161,11 @@ Log::QnD::LogFile
     If the log already has data in it, then two newlines are added to the
     log file before the data is written.
 
+ $log->entry_count()
+
+    This method returns the number of entries in the log file. If the log
+    file doesn't exist then it return undef.
+
  $log->read_forward(), $log->read_backward()
 
     read_forward() and read_backward() each return a single entry from the
@@ -280,4 +285,11 @@ VERSIONS
       was an artifact from development.
 
       Added count option to read_forward and read_backward.
+
+    0.15, May 28, 2014
+
+      Tidied up output of log entry so that the entry is followed by a
+      newline.
+
+      Added $log-entry_count()> method.
 

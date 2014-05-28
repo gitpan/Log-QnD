@@ -9,7 +9,7 @@ use JSON qw{to_json -convert_blessed_universally};
 # use Debug::ShowStuff::ShowVar;
 
 # version
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 # extend Class::PublicPrivate
 use base 'Class::PublicPrivate';
@@ -382,17 +382,62 @@ sub write_entry {
 	
 	# unless the file is empty, output a newline
 	if (tell $out) {
-		print $out "\n\n";
+		print $out "\n";
 	}
 	
 	# output
-	print $out $entry_str;
+	print $out $entry_str, "\n";
 	
 	# return success
 	return 1;
 }
 #
 # write_entry
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+# entry_count
+#
+
+=head2 $log->entry_count()
+
+This method returns the number of entries in the log file.  If the log file
+doesn't exist then it return undef.
+
+=cut
+
+sub entry_count {
+	my ($log) = @_;
+	my ($read, $count);
+	
+	# special case: log file doesn't actually exist
+	if (! -e $log->{'path'})
+		{ return undef }
+	
+	# get lock
+	$read = FileHandle->new($log->{'path'}) or die "unable to get read handle: $!";
+	flock($read, LOCK_SH) or die "unable to lock file: $!";
+	
+	# initialize count to zero
+	$count = 0;
+	
+	LOG_LOOP:
+	while( defined( my $line = $read->getline ) ) {
+		my ($entry);
+		
+		# skip empty lines
+		hascontent($line) or next LOG_LOOP;
+		
+		# increment count
+		$count++;
+	}
+	
+	# return
+	return $count;
+}
+#
+# entry_count
 #------------------------------------------------------------------------------
 
 
@@ -407,7 +452,7 @@ use constant READ_BACKWARD => 2;
 
 sub read_entry {
 	my ($log, $direction, %opts) = @_;
-	my ($read, $line, $lock, $tgt_id, $multiple, $get_count, @rv);
+	my ($read, $lock, $tgt_id, $multiple, $get_count, @rv);
 	
 	# special case: log file doesn't actually exist
 	if (! -e $log->{'path'})
@@ -688,6 +733,12 @@ Fixed test script that was attempting to clear the screen. That bug was an
 artifact from development.
 
 Added C<count> option to C<read_forward> and C<read_backward>.
+
+=item 0.15, May 28, 2014
+
+Tidied up output of log entry so that the entry is followed by a newline.
+
+Added C<$log->entry_count()> method.
 
 =back
 

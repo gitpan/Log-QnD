@@ -156,6 +156,11 @@ log.
 If the log already has data in it, then two newlines are added to the log file
 before the data is written.
 
+=head2 $log->entry_count()
+
+This method returns the number of entries in the log file.  If the log file
+doesn't exist then it return undef.
+
 =head2 $log->read_forward(), $log->read_backward()
 
 C<read_forward()> and C<read_backward()> each return a single entry from the
@@ -287,6 +292,12 @@ Fixed test script that was attempting to clear the screen. That bug was an
 artifact from development.
 
 Added C<count> option to C<read_forward> and C<read_backward>.
+
+=item 0.15, May 28, 2014
+
+Tidied up output of log entry so that the entry is followed by a newline.
+
+Added C<$log->entry_count()> method.
 
 =back
 
