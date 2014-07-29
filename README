@@ -17,7 +17,7 @@ SYNOPSIS
      # undef the log entry or let it go out of scope
      undef $qnd;
     
-     # the long entry looks like this:
+     # the log entry looks like this:
      # {"stage":1,"tracks":["1","4"],"time":"Tue May 20 17:13:22 2014","coord":{"x":1,"z":42},"entry_id":"7WHHJ"}
     
      # get a log file object
@@ -126,6 +126,16 @@ Log::QnD
     on to the log file object, nor does the log file object "know" about
     the entry object.
 
+ $qnd->catch_stderr()
+
+    Closes the existing STDERR, redirects new STDERR to the stderr element
+    in the log entry. STDERR is release when the log object goes out of
+    scope.
+
+    Currently it's undefined what should or will happen if too log entries
+    both try to catch STDERR. Either don't do that or solve this dilemna
+    and submit your ideas back to me.
+
  $qnd->private()
 
     $qnd->private() is a method inherited from Class::PublicPrivate
@@ -151,20 +161,17 @@ Log::QnD::LogFile
  $log->write_entry($string)
 
     This method writes the log entry to the log file. The log file is
-    created if it doesn't already exists.
+    created if it doesn't already exist.
 
     The only input for this method is the string to write to the log. The
     string should already be in JSON format and should have no newline.
     write_entry() doesn't do anything about formatting the string, it just
     spits it into the log.
 
-    If the log already has data in it, then two newlines are added to the
-    log file before the data is written.
-
  $log->entry_count()
 
     This method returns the number of entries in the log file. If the log
-    file doesn't exist then it return undef.
+    file doesn't exist then this method returns undef.
 
  $log->read_forward(), $log->read_backward()
 
@@ -291,5 +298,10 @@ VERSIONS
       Tidied up output of log entry so that the entry is followed by a
       newline.
 
-      Added $log-entry_count()> method.
+      Added $log->entry_count() method.
+
+    0.16, July 28, 2014
+
+      Added catch_stderr method. Fixed typos in documentation. Clarified
+      wording in documentation.
 

@@ -9,7 +9,7 @@ use JSON qw{to_json -convert_blessed_universally};
 # use Debug::ShowStuff::ShowVar;
 
 # version
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 # extend Class::PublicPrivate
 use base 'Class::PublicPrivate';
@@ -33,7 +33,7 @@ Log::QnD - Quick and dirty logging system
  # undef the log entry or let it go out of scope
  undef $qnd;
 
- # the long entry looks like this:
+ # the log entry looks like this:
  # {"stage":1,"tracks":["1","4"],"time":"Tue May 20 17:13:22 2014","coord":{"x":1,"z":42},"entry_id":"7WHHJ"}
 
  # get a log file object
@@ -253,6 +253,38 @@ sub log_file {
 
 
 #------------------------------------------------------------------------------
+# catch_stderr
+#
+
+=head2 $qnd->catch_stderr()
+
+Closes the existing STDERR, redirects new STDERR to the C<stderr> element in
+the log entry.  STDERR is release when the log object goes out of scope.
+
+Currently it's undefined what should or will happen if too log entries both
+try to catch STDERR. Either don't do that or solve this dilemna and submit your
+ideas back to me.
+
+=cut
+
+sub catch_stderr {
+	my ($qnd) = @_;
+	
+	# TESTING
+	# println subname(); ##i
+	
+	# require necessary module
+	require IO::Scalar;
+	
+	# catch STDERR
+	tie *STDERR, 'IO::Scalar', \$qnd->{'stderr'};
+}
+#
+# catch_stderr
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
 # private
 # NOTE: There is no subroutine in this section, just POD to document the
 # $qnd->private() method that is inherited from Class::PublicPrivate.
@@ -282,6 +314,11 @@ sub DESTROY {
 	# autosave if set to do so
 	if ($qnd->private->{'autosave'}) {
 		$qnd->save();
+	}
+	
+	# release stderr
+	if (exists $qnd->{'stderr'}) {
+		untie *STDERR;
 	}
 }
 #
@@ -353,15 +390,12 @@ sub new {
 =head2 $log->write_entry($string)
 
 This method writes the log entry to the log file.  The log file is created if
-it doesn't already exists.
+it doesn't already exist.
 
 The only input for this method is the string to write to the log.  The string
 should already be in JSON format and should have no newline.  C<write_entry()>
 doesn't do anything about formatting the string, it just spits it into the
 log.
-
-If the log already has data in it, then two newlines are added to the log file
-before the data is written.
 
 =cut
 
@@ -403,7 +437,7 @@ sub write_entry {
 =head2 $log->entry_count()
 
 This method returns the number of entries in the log file.  If the log file
-doesn't exist then it return undef.
+doesn't exist then this method returns undef.
 
 =cut
 
@@ -738,7 +772,13 @@ Added C<count> option to C<read_forward> and C<read_backward>.
 
 Tidied up output of log entry so that the entry is followed by a newline.
 
-Added C<$log->entry_count()> method.
+Added C<$log-E<gt>entry_count()> method.
+
+=item 0.16, July 28, 2014
+
+Added catch_stderr method. Fixed typos in documentation. Clarified wording in
+documentation.
+
 
 =back
 

@@ -13,7 +13,7 @@ use String::Util ':all';
 # use Debug::ShowStuff::ShowVar;
 
 # plan tests
-BEGIN { plan tests => 44 };
+BEGIN { plan tests => 45 };
 
 # path to log file
 my $log_path =  './qnd.log';
@@ -55,7 +55,7 @@ if (1) { ##i
 		$vals_org[@vals_org] = randword(5);
 	}
 	
-	# get log object w/o path param
+	# get log object
 	$log = Log::QnD::LogFile->new($log_path);
 	
 	## should have been successful in getting log object
@@ -89,7 +89,7 @@ if (1) { ##i
 if (1) { ##i
 	my ($qnd, $success);
 	
-	# get log object w/o path param
+	# get log entry object w/o path param
 	eval {
 		$qnd = Log::QnD->new();
 		$success = 1;
@@ -411,7 +411,7 @@ if (1) {
 		$ids[@ids] = $qnd->{'entry_id'};
 	}
 	
-	# get log object w/o path param
+	# get log object
 	$log = Log::QnD::LogFile->new($log_path);
 	
 	# get count of log entries
@@ -461,7 +461,7 @@ if (1) {
 	# reverse ids because we're reading the log file backward
 	@ids = reverse(@ids);
 	
-	# get log object w/o path param
+	# get log object
 	$log = Log::QnD::LogFile->new($log_path);
 	
 	# read in batches of 5
@@ -491,6 +491,44 @@ if (1) {
 
 
 #------------------------------------------------------------------------------
+## catch_stderr
+#
+if (1) {
+	my ($qnd, $rnd, $log, $entry);
+	
+	# generate random value
+	$rnd = rand();
+	
+	# delete log file if it exists
+	delete_log_file();
+	
+	# get log object
+	$qnd = Log::QnD->new($log_path);
+	
+	# hold on to stderr
+	$qnd->catch_stderr();
+	
+	# output to stderr
+	print STDERR $rnd;
+	
+	# undef log entry object
+	undef $qnd;
+	
+	# get log object
+	$log = Log::QnD::LogFile->new($log_path);
+	
+	# get log entry
+	$entry = $log->read_backward();
+	
+	# compare random value to log entry
+	ok($rnd eq $entry->{'stderr'});
+}
+#
+# catch_stderr
+#------------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
 ## entry_count returns undef for non-existent log file
 #
 if (1) {
@@ -499,7 +537,7 @@ if (1) {
 	# delete log file if it exists
 	delete_log_file();
 	
-	# get log object w/o path param
+	# get log object
 	$log = Log::QnD::LogFile->new($log_path);
 	
 	# compare counts
@@ -528,7 +566,7 @@ if (1) {
 		my $qnd = Log::QnD->new($log_path);
 	}
 	
-	# get log object w/o path param
+	# get log object
 	$log = Log::QnD::LogFile->new($log_path);
 	
 	# get count of log entries
@@ -546,7 +584,9 @@ if (1) {
 delete_log_file();
 
 
-### utility functions
+### utility functions #########################################################
+
+
 
 #------------------------------------------------------------------------------
 # delete_log_file
