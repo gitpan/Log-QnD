@@ -9,7 +9,7 @@ use JSON qw{to_json -convert_blessed_universally};
 # use Debug::ShowStuff::ShowVar;
 
 # version
-our $VERSION = '0.16';
+our $VERSION = '0.17';
 
 # extend Class::PublicPrivate
 use base 'Class::PublicPrivate';
@@ -778,6 +778,10 @@ Added C<$log-E<gt>entry_count()> method.
 
 Added catch_stderr method. Fixed typos in documentation. Clarified wording in
 documentation.
+
+=item 0.16, August 9, 2014
+
+Fixed problem in prerequisites.
 
 
 =back

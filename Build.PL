@@ -8,6 +8,7 @@ $params = {
             'dist_author' => 'Miko O\'Sullivan <miko@idocs.com>',
             'module_name' => 'Log::QnD',
             'requires' => {
+                            'IO::Scalar' => 0,
                             'String::Util' => 0,
                             'Test' => 0,
                             'Class::PublicPrivate' => 0,

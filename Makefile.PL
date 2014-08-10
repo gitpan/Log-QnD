@@ -11,6 +11,7 @@ $make_args = {
                'VERSION_FROM' => 'lib/Log/QnD.pm',
                'LICENSE' => 'perl',
                'PREREQ_PM' => {
+                                'IO::Scalar' => 0,
                                 'String::Util' => 0,
                                 'Test' => 0,
                                 'Class::PublicPrivate' => 0,
